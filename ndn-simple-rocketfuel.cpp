@@ -5,32 +5,10 @@
 
 namespace ns3 {
 
-/**
- * This scenario simulates a very simple network topology:
- *
- *
- *      +----------+     1Mbps      +--------+     1Mbps      +----------+
- *      | consumer | <------------> | router | <------------> | producer |
- *      +----------+         10ms   +--------+          10ms  +----------+
- *
- *
- * Consumer requests data from producer with frequency 10 interests per second
- * (interests contain constantly increasing sequence number).
- *
- * For every received interest, producer replies with a data packet, containing
- * 1024 bytes of virtual payload.
- *
- * To run scenario and see what is happening, use the following command:
- *
- *     NS_LOG=ndn.Consumer:ndn.Producer ./waf --run=ndn-simple
- */
-
 int
 main(int argc, char* argv[])
 {
 
-  //Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("1Gbps"));
-  //Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::QueueBase::MaxSize", StringValue("2000p"));
 
   CommandLine cmd;
@@ -61,16 +39,7 @@ main(int argc, char* argv[])
   ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
   ndnGlobalRoutingHelper.InstallAll();
 
-
-  //std::cout<< "topologyReader.GetNOdes().GetN() = " <<topologyReader.GetNodes().GetN()<<"\n";
-
-  //std::cout<< "topologyReader.GetNOdes().Get() = " <<topologyReader.GetNodes().Get(1)<<"\n";
-
-
-
   // Installing applications
-
-  // Consumer
 
   unsigned int producer_node = 4;
   int peerKey = 10001;
@@ -155,11 +124,9 @@ main(int argc, char* argv[])
 
 
   ndn::AppHelper consumerAHelper("ns3::ndn::ConsumerACbr");
-  consumerAHelper.SetPrefix("/prefix/file/sync");  // could be problem
+  consumerAHelper.SetPrefix("/prefix/file/sync");  // could be a problem
   //consumerAHelper.SetAttribute("Frequency", StringValue("3"));
   consumerAHelper.Install(topologyReader.GetNodes().Get(producer_node));
-
-
 
 
 
