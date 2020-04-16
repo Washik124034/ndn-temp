@@ -355,21 +355,8 @@ void Edge::OnInterest(shared_ptr<const Interest> interest)
 
                 if(Edge_ID[matchedEdgeIndex] != m_EdgeID)
                 {
-
-
-
-
-
-
                     m_link.addDelegation(0, "/taskoffload/overlay/" + std::to_string(Edge_ID[matchedEdgeIndex]));
                     NS_LOG_INFO("Overlay Redirecting to " << "/taskoffload/overlay/" + std::to_string(Edge_ID[matchedEdgeIndex]));
-
-
-
-
-
-
-
 
                 }
                 else // that means found match locally
