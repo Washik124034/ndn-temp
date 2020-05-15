@@ -2,6 +2,7 @@
 #include <sstream>
 #include <thread>
 #include <vector>
+#include <algorithm> 
 
 #include "cfn-strategy.hpp"
 #include "algorithm.hpp"
@@ -43,7 +44,7 @@ CFNStrategyBase::afterReceiveInterest(const FaceEndpoint& ingress, const Interes
 
   if(!name.compare(0, 3, execName)){
     std::cout << "will handle execution requests here" << std::endl;
-    this->handleExec(interest);
+    this->handleExec(interest, pitEntry);
   }
   //need to check what do we do about PIT entries
 }
@@ -73,7 +74,7 @@ CFNStrategy::getStrategyName()
 
 
 void
-CFNStrategyBase::handleExec(const Interest& interest)
+CFNStrategyBase::handleExec(const Interest& interest, const shared_ptr<pit::Entry>& pitEntry)
 {
     std::cout << "received an execution request interest = " << interest.getName() << std::endl;    
 
@@ -87,19 +88,32 @@ CFNStrategyBase::handleExec(const Interest& interest)
       {
         //forward to the local Python worker
       }
-      else if (isMyNeighbour(dst_node))
+      else if (isMyNeighbour(dstNode))
       {
-        if(!isOverloaded(dst_node))
+        if(isOverloaded(dstNode))
         {
           ::ndn::Link m_link;
-          std::string forwardingHint = "/cfn/exec/" + std::to_string(dst_node);
+          std::string forwardingHint = "/cfn/exec/" + std::to_string(getNodeHavingLowestLoad());
           m_link.addDelegation(0, forwardingHint);
-          interest.setForwardingHint(m_link.getDelegationList());
+          Interest redirctingInterest(interest.getName());
+          redirctingInterest.setForwardingHint(m_link.getDelegationList());
+          const fib::Entry& fibEntry = this->lookupFib(*pitEntry);
+          const fib::NextHopList& nexthops = fibEntry.getNextHops();
+          auto it = nexthops.end();
+
+          if (it != nexthops.end()) 
+          {
+            auto egress = FaceEndpoint(it->getFace(), 0);
+            this->sendInterest(pitEntry, egress, redirctingInterest);
+            return;
+          }
+          
+
         }
 
       }
 
-      retrun interest;
+      //return interest;
 
       /* 
       if(isMineID(interest.setForwardingHint())){
@@ -142,16 +156,22 @@ CFNStrategyBase::isMyNeighbour(uint32_t NodeID)
 bool
 CFNStrategyBase::isOverloaded(uint32_t NodeID)
 {
-  auto it = std::find(id.begin(), id.end(), NodeID);
-  if(it != id.end())
-  {
-    if(cores[std::distance(std::begin(id), it)] > occupied_cores[std::distance(std::begin(id), it)] 
-      return false; // That means the node has some free cores
-    else
-      return true; // That means the node is overlaoded 
-  }
+    auto it = std::find(id.begin(), id.end(), NodeID);
+    if(it != id.end())
+    {
+      if(cores[std::distance(std::begin(id), it)] == occupied_cores[std::distance(std::begin(id), it)]) 
+        return true;  // That means the node is overlaoded 
+      else
+        return false; // That means the node has some free cores
+    }
+}
 
-  return true;
+uint32_t
+CFNStrategyBase::getNodeHavingLowestLoad()
+{
+    auto it = std::min_element(occupied_cores.begin(), occupied_cores.end());
+    return id[std::distance(occupied_cores.begin(),it)];
+
 }
 
 void
