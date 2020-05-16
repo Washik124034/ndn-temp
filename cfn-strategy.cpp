@@ -3,13 +3,17 @@
 #include <thread>
 #include <vector>
 #include <algorithm> 
+#include<fstream>
 
 #include "cfn-strategy.hpp"
 #include "algorithm.hpp"
 #include <ndn-cxx/link.hpp>
-
+#include "common/logger.hpp"
 namespace nfd {
 namespace fw {
+
+
+
 
 CFNStrategyBase::CFNStrategyBase(Forwarder& forwarder)
   : Strategy(forwarder)
@@ -21,9 +25,14 @@ CFNStrategyBase::afterReceiveInterest(const FaceEndpoint& ingress, const Interes
                                             const shared_ptr<pit::Entry>& pitEntry)
 {
   Name name = interest.getName();
-  Name floodingName = Name("/ndn/broadcast/flooding/");
-  Name graphName = Name("/ndn/broadcast/graph/");
-  Name execName = Name("/ndn/broadcast/exec/");
+  Name floodingName = Name("/cfn/flooding/");
+  Name graphName = Name("/cfn/graph/");
+  Name execName = Name("/cfn/exec/");
+  std::ofstream out("/home/washik/ndn-cxx/strategy_cfn.txt");
+  out << "CFN name = " << name;
+  out.close(); 
+
+  peerParameters[0] = 4;
 
   std::cout << "CFN strategy received I:" << name << ". Extracted prefix: " << std::endl;
 
@@ -32,23 +41,23 @@ CFNStrategyBase::afterReceiveInterest(const FaceEndpoint& ingress, const Interes
     return;
   }
 
-  if(!name.compare(0, 3, floodingName)){
+  if(!name.compare(0, 2, floodingName)){
     std::cout << "will handle scoped flooding here" << std::endl;
     this->handleFlooding(interest);
   }
 
-  if(!name.compare(0, 3, graphName)){
+  if(!name.compare(0, 2, graphName)){
     std::cout << "will handle computation graph here" << std::endl;
     this->handleGraph(interest);
   }
 
-  if(!name.compare(0, 3, execName)){
+  if(!name.compare(0, 2, execName)){
     std::cout << "will handle execution requests here" << std::endl;
     this->handleExec(interest, pitEntry);
   }
   //need to check what do we do about PIT entries
 }
-
+NFD_LOG_INIT(CFNStrategy);
 NFD_REGISTER_STRATEGY(CFNStrategy);
 
 CFNStrategy::CFNStrategy(Forwarder& forwarder, const Name& name)
@@ -87,6 +96,7 @@ CFNStrategyBase::handleExec(const Interest& interest, const shared_ptr<pit::Entr
       if(isMineID(dstNode))
       {
         //forward to the local Python worker
+        std::cout << "Going to local python worker" << std::endl;
       }
       else if (isMyNeighbour(dstNode))
       {
@@ -97,7 +107,7 @@ CFNStrategyBase::handleExec(const Interest& interest, const shared_ptr<pit::Entr
           m_link.addDelegation(0, forwardingHint);
           Interest redirctingInterest(interest.getName());
           redirctingInterest.setForwardingHint(m_link.getDelegationList());
-          const fib::Entry& fibEntry = this->lookupFib(*pitEntry);
+          const fib::Entry& fibEntry = this->lookupFib2(interest);
           const fib::NextHopList& nexthops = fibEntry.getNextHops();
           auto it = nexthops.end();
 
